@@ -5,6 +5,7 @@ import (
 
 	"github.com/joho/godotenv"
 	trisarl "github.com/rotationalio/trisa/pkg"
+	"github.com/rotationalio/trisa/pkg/config"
 	"github.com/urfave/cli/v2"
 )
 
@@ -34,12 +35,18 @@ func main() {
 }
 
 func serve(c *cli.Context) (err error) {
+	var conf config.Config
+	if conf, err = config.New(); err != nil {
+		return cli.Exit(err, 1)
+	}
+	conf.BindAddr = c.String("addr")
+
 	var srv *trisarl.Server
-	if srv, err = trisarl.New(); err != nil {
+	if srv, err = trisarl.New(conf); err != nil {
 		return cli.Exit(err, 1)
 	}
 
-	if err = srv.Serve(c.String("addr")); err != nil {
+	if err = srv.Serve(); err != nil {
 		return cli.Exit(err, 1)
 	}
 	return nil

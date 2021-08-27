@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/rotationalio/trisa/pkg/config"
 	"github.com/rotationalio/trisa/pkg/logger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -27,8 +28,23 @@ func init() {
 
 // New creates a new Rotational TRISA Server with the specified configuration and
 // prepares it to listen for and respond to gRPC requests on the TRISA network.
-func New() (s *Server, err error) {
-	s = &Server{errc: make(chan error, 1)}
+func New(conf config.Config) (s *Server, err error) {
+	// Load default configuration from the environment
+	if conf.IsZero() {
+		if conf, err = config.New(); err != nil {
+			return nil, err
+		}
+	}
+
+	// Set the global log level
+	zerolog.SetGlobalLevel(zerolog.Level(conf.LogLevel))
+
+	// Set human readable logging if console log is requested
+	if conf.ConsoleLog {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
+	s = &Server{conf: conf, errc: make(chan error, 1)}
 	return s, nil
 }
 
@@ -36,12 +52,13 @@ func New() (s *Server, err error) {
 type Server struct {
 	protocol.UnimplementedTRISANetworkServer
 	protocol.UnimplementedTRISAHealthServer
+	conf config.Config
 	srv  *grpc.Server
 	errc chan error
 }
 
 // Serve TRISA requests.
-func (s *Server) Serve(addr string) (err error) {
+func (s *Server) Serve() (err error) {
 	// Initialize the gRPC server
 	s.srv = grpc.NewServer()
 	protocol.RegisterTRISANetworkServer(s.srv, s)
@@ -57,14 +74,14 @@ func (s *Server) Serve(addr string) (err error) {
 
 	// Listen for TRISA service requests on the configured bind address and port
 	var sock net.Listener
-	if sock, err = net.Listen("tcp", addr); err != nil {
-		return fmt.Errorf("could not listen on %q", addr)
+	if sock, err = net.Listen("tcp", s.conf.BindAddr); err != nil {
+		return fmt.Errorf("could not listen on %q", s.conf.BindAddr)
 	}
 	defer sock.Close()
 
 	// Run the server and handle requests
 	go func() {
-		log.Info().Str("listen", addr).Str("version", Version()).Msg("server started")
+		log.Info().Str("listen", s.conf.BindAddr).Str("version", Version()).Msg("server started")
 		if err := s.srv.Serve(sock); err != nil {
 			s.errc <- err
 		}

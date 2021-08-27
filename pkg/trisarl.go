@@ -151,8 +151,13 @@ func (s *Server) TransferStream(stream protocol.TRISANetwork_TransferStreamServe
 }
 
 func (s *Server) ConfirmAddress(ctx context.Context, in *protocol.Address) (out *protocol.AddressConfirmation, err error) {
-	log.Info().Msg("confirm address request received")
-	return nil, status.Error(codes.Unimplemented, "still working on implementing ConfirmAddress")
+	// TODO: return a gRPC error
+	log.Info().Msg("confirm address")
+	return nil, &protocol.Error{
+		Code:    protocol.Unimplemented,
+		Message: "Rotational Labs has not implemented address confirmation yet",
+		Retry:   false,
+	}
 }
 
 func (s *Server) KeyExchange(ctx context.Context, in *protocol.SigningKey) (out *protocol.SigningKey, err error) {

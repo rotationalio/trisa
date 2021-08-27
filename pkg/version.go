@@ -1,4 +1,4 @@
-package trisa
+package trisarl
 
 import "fmt"
 

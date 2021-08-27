@@ -16,21 +16,31 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "trisarl"
 	app.Usage = "run the rotational trisa server"
+	app.UsageText = "trisarl [-a]"
 	app.Version = trisarl.Version()
-
-	app.Commands = []*cli.Command{
-		{
-			Name:     "serve",
-			Usage:    "run the TRISA server",
-			Category: "server",
-			Action:   serve,
-			Flags:    []cli.Flag{},
+	app.Action = serve
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:    "addr",
+			Aliases: []string{"a"},
+			Usage:   "the address and port to bind the server on",
+			Value:   ":2384",
+			EnvVars: []string{"TRISA_BIND_ADDR"},
 		},
 	}
+	app.Commands = []*cli.Command{}
 
 	app.Run(os.Args)
 }
 
 func serve(c *cli.Context) (err error) {
+	var srv *trisarl.Server
+	if srv, err = trisarl.New(); err != nil {
+		return cli.Exit(err, 1)
+	}
+
+	if err = srv.Serve(c.String("addr")); err != nil {
+		return cli.Exit(err, 1)
+	}
 	return nil
 }
